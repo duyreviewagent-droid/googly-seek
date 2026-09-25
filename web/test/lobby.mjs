@@ -1,0 +1,22 @@
+// Two players: A makes a private lobby, B joins by code, both walk around the hall, A starts, both land in the bedroom.
+import WebSocket from 'ws';
+const url = process.env.URL || 'ws://localhost:8123';
+const mk = name => new Promise(res => { const ws = new WebSocket(url); ws.log = []; ws.on('message', r => { const m = JSON.parse(r); ws.log.push(m); if (m.t === 'hello') { ws.id = m.id; ws.send(JSON.stringify({ t: 'me', name, color: '#9b59ff', skin: 'polka', pet: 'pup' })); res(ws); } }); });
+const wait = (ws, f, ms = 5000) => new Promise((res, rej) => { const t0 = Date.now(); const iv = setInterval(() => { const m = ws.log.find(f); if (m) { clearInterval(iv); res(m); } else if (Date.now() - t0 > ms) { clearInterval(iv); rej(new Error('timeout waiting')); } }, 20); });
+const A = await mk('ALICE'), B = await mk('BOB');
+A.send(JSON.stringify({ t: 'create', public: false }));
+const code = (await wait(A, m => m.t === 'joined')).code;
+B.send(JSON.stringify({ t: 'join', code }));
+const wb = await wait(B, m => m.t === 'world');
+console.log('B joined', code, 'map', wb.map, 'players', wb.players.map(p => p.name + ':' + p.pet).join(' '));
+B.send(JSON.stringify({ t: 'st', w: 1, x: 3, y: 0, z: 1, yaw: 0, g: 1 }));
+await new Promise(r => setTimeout(r, 300));
+const snap = [...A.log].reverse().find(m => m.t === 'snap');
+console.log('A sees B walking in the hall at', snap.e.find(e => e[0] === B.id).slice(1, 4));
+A.send(JSON.stringify({ t: 'set', settings: { cpus: 2, hide: 10 } }));
+A.send(JSON.stringify({ t: 'start' }));
+const wa2 = await wait(A, m => m.t === 'world' && m.map === 0), wb2 = await wait(B, m => m.t === 'world' && m.map === 0);
+console.log('round started for both:', wa2.state, wb2.state, 'seekers', wa2.players.filter(p => p.seeker).map(p => p.name).join(','), 'total', wa2.players.length);
+B.send(JSON.stringify({ t: 'chat', text: 'hi' }));
+console.log('chat reached A:', !!(await wait(A, m => m.t === 'chat' && m.text === 'hi')));
+process.exit(0);
