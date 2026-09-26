@@ -100,7 +100,7 @@ function giantBedroom() {
       [-2, 11, 1, 0.3], [-14.3, 16.7, 1, 0.45], [-14.2, 20.2, 1, 0.5], [-29.85, 3, 1, 0.75, 0.45],
       [-24, -22.4, 1, 0.9, 3.0], [-29.3, 6, 1, 0.6, 4.4], [-17.5, 22.5, 1, 0.5, 4.4],
     ],
-    ground: 'wood',
+    ground: 'wood', blurb: 'Under the bed, the wardrobe, the tent, the toy box…', window: { x0: -5.2, x1: 5.2, y0: 4.2, y1: 13 },
   };
 }
 
@@ -121,5 +121,111 @@ function waitingHall() {
   };
 }
 
-export const MAPS = [giantBedroom(), waitingHall()];
-export const ROOM = 0, LOBBY = 1;
+function giantKitchen() {
+  const W = 60, D = 44, H = 16, c = walls(W, D, H);
+  // ---- COUNTER along the back wall, with a cupboard left open underneath (top 6.0)
+  c.push(B(-12.5, -19.5, 33, 5, 0.6, 'worktop', 5.4));
+  c.push(B(-21.5, -19.6, 15, 4.8, 5.4, 'cabinet'), B(-2, -19.6, 12, 4.8, 5.4, 'cabinet'));
+  c.push(B(-14.3, -14.5, 0.3, 5, 5, 'cupdoor', 0.2));
+  c.push(C(-13.1, -21.1, 0.8, 1.6, 'pan'), C(-9.0, -18.4, 0.9, 2.2, 'potS'));
+  c.push(C(-24, -18.9, 1.4, 3, 'jar', 6), B(-18, -20.5, 4, 2.5, 2.5, 'breadbox', 6), C(-2, -20, 1.2, 4, 'mixer', 6));
+  // step stool + cookbooks up to the worktop
+  for (let i = 0; i < 5; i++) c.push(B(-27, -15.8 + i * 2.4, 2.4, 2.4, 5.5 - i * 1.1, i < 2 ? 'stool' : 'books'));
+  // ---- OVEN, FRIDGE, and the gap behind the fridge
+  c.push(B(9, -19.5, 6, 5, 6, 'oven'), B(21, -18.5, 8, 7, 15, 'fridge'));
+  c.push(C(27, -12, 1.5, 2.4, 'bucket'));
+  c.push(B(9, -16.9, 2.2, 0.15, 3, 'towel', 2.4, SOFT));
+  // ---- KITCHEN TABLE with a long tablecloth (crawl underneath) and chairs
+  for (const [x, z] of [[-7.4, -3.4], [7.4, -3.4], [-7.4, 5.4], [7.4, 5.4]]) c.push(C(x, z, 0.35, 5, 'tableleg'));
+  c.push(B(0, 1, 16, 10, 0.5, 'ktable', 5));
+  c.push(B(0, -4.1, 16.2, 0.12, 3.6, 'cloth', 1.4, SOFT), B(0, 6.1, 16.2, 0.12, 3.6, 'cloth', 1.4, SOFT));
+  for (const [x, z, ry] of [[-11, 1, 0], [11, 1, 2], [-4, -7.6, 1], [4, -7.6, 1]]) {
+    const along = ry === 1, bx = ry === 0 ? -1.6 : ry === 2 ? 1.6 : 0, bz = along ? -1.6 : 0;
+    for (const [dx, dz] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]]) c.push(C(x + dx, z + dz, 0.22, 2.6, 'chairleg'));
+    c.push(B(x, z, 3.6, 3.6, 0.4, 'chair', 2.6), B(x + bx, z + bz, along ? 3.6 : 0.4, along ? 0.4 : 3.6, 4.2, 'chairback', 3.0));
+  }
+  // ---- PANTRY on the west wall, door wide open
+  c.push(B(-28, 3.8, 4, 0.4, 14, 'pantry'), B(-28, 14.2, 4, 0.4, 14, 'pantry'), B(-28, 9, 4, 10.8, 0.6, 'pantry', 13.4));
+  c.push(B(-28.5, 9, 3, 10, 0.3, 'pshelf', 4), B(-28.5, 9, 3, 10, 0.3, 'pshelf', 8));
+  c.push(B(-23.8, 14.45, 4.4, 0.3, 13, 'pdoor', 0.3), C(-28.6, 6.3, 1.1, 2.4, 'sack'));
+  // ---- TRASH CAN, CEREAL BOXES, BIG POT
+  c.push(C(22, 8, 1.8, 4.5, 'trashcan'));
+  c.push(B(14, -6, 4, 1.6, 6, 'cereal'), B(17.5, -4.5, 1.6, 4, 5, 'cereal2'));
+  c.push(C(-20, 8, 2, 3, 'bigpot'));
+  // ---- PAPER GROCERY BAG tipped over, apples rolling out
+  c.push(B(-12, 20.6, 6, 0.3, 4, 'bag'), B(-14.85, 18.3, 0.3, 4.6, 4, 'bag'), B(-9.15, 18.3, 0.3, 4.6, 4, 'bag'), B(-12, 18.3, 6, 4.6, 0.3, 'bagTop', 3.7));
+  c.push(C(-10, 14, 0.9, 1.8, 'apple'), C(-13.6, 14.6, 0.85, 1.7, 'apple'), C(-7.8, 16.4, 0.8, 1.6, 'orange'));
+  // ---- DOG BED (soft, crawl in) and bowl
+  c.push(C(16, 15, 2.4, 1.3, 'dogbed', 0, SOFT), C(20, 12.5, 1.0, 0.6, 'bowl'));
+  return {
+    id: 2, name: 'The Giant Kitchen', W, D, roof: H, colliders: c,
+    spawns: [[0, 11], [3, 11.5], [-3, 11.5], [0, 13.5], [5, 13], [-5, 13], [2, 15], [-2, 15]],
+    seekSpots: [[14, 20.8], [11, 20.8], [17, 20.8]],
+    hides: [
+      [-11, -20.5, 0, 0.85], [-12.5, -18.2, 1, 0.8], [5, -20.5, 0, 0.5], [28.5, -21, 0, 0.6], [27.5, -18, 0, 0.5],
+      [0, 1, 1, 0.75], [-5, 2, 1, 0.65], [5, 0, 1, 0.65], [-11, 1, 1, 0.25], [11, 1, 1, 0.25],
+      [-28, 11.5, 0, 0.8], [-27.6, 8.6, 1, 0.7], [-12, 19.4, 1, 0.8], [-10.4, 19.8, 0, 0.7],
+      [22, 10.4, 1, 0.45], [14, -7.6, 1, 0.45], [29.0, -13.7, 1, 0.5], [-29.1, -9, 0, 0.55], [16, 15, 1, 0.7],
+      [-20, 10.6, 1, 0.45], [-24, -21.3, 1, 0.8, 6], [-5, -21.3, 1, 0.6, 6], [-27, -19, 1, 0.5, 6],
+    ],
+    ground: 'kitchen', blurb: 'Under the tablecloth, the pantry, the grocery bag…', window: { x0: -18, x1: -6, y0: 8, y1: 13.5 },
+  };
+}
+
+function giantBackyard() {
+  const W = 72, D = 52, c = walls(W, D, 9);
+  // ---- TREEHOUSE (north-west): log steps up to a porch, a hut round the trunk
+  c.push(C(-24, -14, 1.8, 26, 'trunk'));
+  for (const [x, z] of [[-29.1, -18.6], [-18.9, -18.6], [-29.1, -9.4], [-18.9, -9.4], [-14.9, -15], [-14.9, -12.2]]) c.push(C(x, z, 0.35, 6, 'deckpost'));
+  c.push(B(-24, -14, 11, 10, 0.6, 'deck', 6), B(-16.5, -13.6, 4, 3.4, 0.6, 'deck', 6));
+  c.push(B(-24, -18.8, 11, 0.4, 4.6, 'hut', 6.6), B(-24, -9.2, 11, 0.4, 4.6, 'hut', 6.6), B(-29.3, -14, 0.4, 10, 4.6, 'hut', 6.6));
+  c.push(B(-18.7, -16.7, 0.4, 3.8, 4.6, 'hut', 6.6), B(-18.7, -10.9, 0.4, 3.0, 4.6, 'hut', 6.6), B(-18.7, -13.6, 0.4, 2.4, 1.6, 'hut', 9.6));
+  c.push(B(-24, -14, 11.6, 10.6, 0.5, 'hutroof', 11.2));
+  for (let i = 0; i < 5; i++) c.push(B(-13.3 + i * 2.4, -13.6, 2.4, 2.4, 5.5 - i * 1.1, 'logstep'));
+  // ---- SHED (north-east), door on the west side
+  c.push(B(26, -24.8, 12, 0.4, 9, 'shed'), B(26, -15.2, 12, 0.4, 9, 'shed'), B(31.8, -20, 0.4, 10, 9, 'shed'));
+  c.push(B(20.2, -23, 0.4, 3.2, 9, 'shed'), B(20.2, -17, 0.4, 3.2, 9, 'shed'), B(20.2, -20, 0.4, 2.8, 4.5, 'shed', 4.5));
+  c.push(B(26, -20, 12.4, 10.4, 0.5, 'shedroof', 9));
+  c.push(B(24.5, -22.4, 4, 2.6, 2.4, 'mower'), B(30.6, -18, 1.6, 4, 5, 'shedshelf'));
+  // ---- SWINGS + SLIDE (walk up the ladder, slide down — or walk up the slide)
+  c.push(C(8, -10, 0.3, 9, 'swingpost'), C(8, -2, 0.3, 9, 'swingpost'));
+  c.push(B(14, -8, 2.6, 2.6, 4.4, 'slidetop'));
+  for (let i = 0; i < 3; i++) c.push(B(14, -10.5 - i * 2.4, 2.6, 2.4, 3.3 - i * 1.1, 'ladder'));
+  for (let i = 1; i <= 9; i++) c.push(B(14, -6.7 + (i - 0.5) * 0.9, 2.2, 0.9, 4.4 - 0.44 * i, 'slidestep'));
+  // ---- SANDBOX with a sandcastle
+  c.push(B(-3, 4.25, 10, 0.5, 0.9, 'sandwall'), B(-3, 11.75, 10, 0.5, 0.9, 'sandwall'), B(-7.75, 8, 0.5, 7, 0.9, 'sandwall'), B(1.75, 8, 0.5, 7, 0.9, 'sandwall'));
+  c.push(C(-3.5, 8, 1.4, 2.4, 'castle'), C(0, 6, 0.8, 1.3, 'pail'));
+  // ---- PADDLING POOL (wade in)
+  c.push(B(15, 6.4, 10, 0.8, 1.2, 'poolwall'), B(15, 13.6, 10, 0.8, 1.2, 'poolwall'), B(10.4, 10, 0.8, 6.4, 1.2, 'poolwall'), B(19.6, 10, 0.8, 6.4, 1.2, 'poolwall'));
+  // ---- DOGHOUSE
+  c.push(B(-32.8, 8, 0.4, 6, 5, 'dogh'), B(-30, 5.2, 6, 0.4, 5, 'dogh'), B(-30, 10.8, 6, 0.4, 5, 'dogh'));
+  c.push(B(-27.2, 6, 0.4, 2, 5, 'dogh'), B(-27.2, 10, 0.4, 2, 5, 'dogh'), B(-27.2, 8, 0.4, 2, 2, 'dogh', 3), B(-30, 8, 6.6, 6.6, 0.4, 'doghroof', 5));
+  c.push(C(-24.6, 5.4, 1, 0.5, 'bowl'));
+  // ---- BUSHES, TALL GRASS, LEAF PILE (all soft: step inside and vanish)
+  for (const [x, z, r, h] of [[-14, 20, 3, 3.2], [-26, 20, 3.2, 3.4], [31, 4, 3, 3.2], [8, -21, 3.4, 3.6], [-8, -22, 2.8, 3]]) c.push(C(x, z, r, h, 'bush', 0, SOFT));
+  c.push(B(28, 15, 8, 6, 2.2, 'tallgrass', 0, SOFT), C(-16, -2, 2.6, 1.4, 'leaves', 0, SOFT));
+  // ---- PICNIC TABLE, GRILL, WHEELBARROW, GNOME, TRAMPOLINE, FLOWERS
+  for (const [x, z] of [[-7.6, -9.6], [-0.4, -9.6], [-7.6, -6.4], [-0.4, -6.4]]) c.push(C(x, z, 0.25, 3.2, 'ptleg'));
+  c.push(B(-4, -8, 8, 4, 0.4, 'ptable', 3.2), B(-4, -10.9, 8, 1.2, 0.3, 'bench', 1.9), B(-4, -5.1, 8, 1.2, 0.3, 'bench', 1.9));
+  c.push(C(20, 20, 1.6, 4, 'grill'), B(-20, 14, 3, 5, 2.2, 'barrow'), C(-10, -16, 0.9, 3.2, 'gnome'));
+  c.push(C(0, -16, 2.4, 0.55, 'tramp', 0, { bounce: 13 }));
+  c.push(B(-2, -24.6, 20, 1.8, 0.45, 'flowerbed'));
+  for (const x of [-10, -5, 0, 5, 9]) c.push(C(x, -24.6, 0.25, 7 + (x % 3), 'flower', 0.45));
+  return {
+    id: 3, name: 'The Giant Backyard', W, D, roof: 0, colliders: c, outdoor: true,
+    spawns: [[2, 1], [5, 1], [-1, 1], [2, -2], [5, -3.5], [-1, -2], [3.5, 3], [0, 3]],
+    seekSpots: [[0, 24.8], [-3, 24.8], [3, 24.8]],
+    hides: [
+      [-27.5, -17, 1, 0.9, 6.6], [-26, -11, 1, 0.85, 6.6], [-24, -11.4, 0, 0.35],
+      [27, -17, 0, 0.75], [30.5, -23.5, 1, 0.85], [22.5, -19.5, 1, 0.6],
+      [-30.5, 8, 1, 0.85], [-14, 20, 1, 0.8], [-26, 20, 1, 0.8], [31, 4, 1, 0.8], [8, -21, 1, 0.8], [-8, -22, 1, 0.75],
+      [28, 15, 1, 0.8], [26, 13.5, 1, 0.75], [-16, -2, 1, 0.8], [-4, -8, 1, 0.3], [21.8, 21.6, 1, 0.45],
+      [-20, 17.2, 1, 0.45], [-10, -17.9, 1, 0.4], [-3.5, 10, 1, 0.3, 0], [14, -8, 1, 0.3, 4.4],
+    ],
+    ground: 'grass', blurb: 'The treehouse, the shed, bushes, tall grass…',
+  };
+}
+
+export const MAPS = [giantBedroom(), waitingHall(), giantKitchen(), giantBackyard()];
+export const ROOM = 0, LOBBY = 1, KITCHEN = 2, YARD = 3;
+export const GAME_MAPS = [ROOM, KITCHEN, YARD];

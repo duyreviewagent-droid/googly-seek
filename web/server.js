@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { MAPS, ROOM, LOBBY } from './public/js/maps.js';
+import { MAPS, ROOM, LOBBY, GAME_MAPS } from './public/js/maps.js';
 import * as S from './public/js/sim.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -64,7 +64,7 @@ function newEntity(o) {
 function makeRoom(opts = {}) {
   const r = {
     code: code(), public: !!opts.public, name: clean(opts.name, 24), hostId: 0, players: new Map(),
-    settings: { cpus: 3, diff: 1, hide: 30, seek: 180, seekers: 0, ...(opts.settings || {}) },
+    settings: { cpus: 3, diff: 1, hide: 30, seek: 180, seekers: 0, map: -1, ...(opts.settings || {}) }, gameMap: ROOM,
     state: 'lobby', t: 0, seekT: 0, squeakT: SQUEAK_EVERY, solo: !!opts.solo, role: opts.role || 'random', snapAcc: 0, round: 0, sounds: [], winner: null,
   };
   rooms.set(r.code, r);
@@ -74,8 +74,9 @@ function makeRoom(opts = {}) {
 const humans = r => [...r.players.values()].filter(p => !p.bot);
 const hidersOf = r => [...r.players.values()].filter(p => !p.seeker);
 const seekersOf = r => [...r.players.values()].filter(p => p.seeker);
-const mapOf = r => MAPS[r.state === 'lobby' ? LOBBY : ROOM];
-const navOf = r => NAV[r.state === 'lobby' ? LOBBY : ROOM];
+const mapIdOf = r => r.state === 'lobby' ? LOBBY : r.gameMap;
+const mapOf = r => MAPS[mapIdOf(r)];
+const navOf = r => NAV[mapIdOf(r)];
 function syncBots(r) {
   const s = r.settings;
   const want = Math.max(0, Math.min(s.cpus, MAX - humans(r).length));
@@ -101,11 +102,11 @@ function roomInfo(r) {
 }
 function pushLobby(r) { bcast(r, { t: 'room', room: roomInfo(r) }); }
 function worldMsg(r) {
-  return { t: 'world', map: r.state === 'lobby' ? LOBBY : ROOM, state: r.state, time: r.t, settings: r.settings, round: r.round, players: [...r.players.values()].map(p => fullPlayer(r, p)) };
+  return { t: 'world', map: mapIdOf(r), state: r.state, time: r.t, settings: r.settings, round: r.round, players: [...r.players.values()].map(p => fullPlayer(r, p)) };
 }
 function listRooms() {
   return [...rooms.values()].filter(r => r.public && humans(r).length > 0).map(r => ({
-    code: r.code, name: r.name || (humans(r)[0]?.name + "'s lobby"), humans: humans(r).length, total: r.players.size, state: r.state, diff: DIFF[r.settings.diff].name,
+    code: r.code, name: r.name || (humans(r)[0]?.name + "'s lobby"), humans: humans(r).length, total: r.players.size, state: r.state, diff: DIFF[r.settings.diff].name, map: r.settings.map < 0 ? 'Random place' : MAPS[r.settings.map].name,
   }));
 }
 function leave(p) {
@@ -158,6 +159,9 @@ function startRound(r) {
   const all = [...r.players.values()];
   if (all.length < 2) { send(r.players.get(r.hostId)?.ws, { t: 'err', msg: 'You need at least 2 googlies — add a CPU or invite a friend.' }); return; }
   r.round++;
+  // pick the place: the host's choice, or a random one (not the same as last time)
+  const pick = r.settings.map;
+  r.gameMap = GAME_MAPS.includes(pick) ? pick : GAME_MAPS.filter(m => m !== r.gameMap || r.round === 1)[Math.floor(Math.random() * (r.round === 1 ? GAME_MAPS.length : GAME_MAPS.length - 1))];
   const n = Math.min(all.length - 1, r.settings.seekers || (all.length >= 6 ? 2 : 1));
   let pool = shuffle(all.slice()).sort((a, b) => a.seekTurns - b.seekTurns);
   if (r.solo && r.role === 'seek') pool = [...humans(r), ...pool.filter(p => p.bot)];
@@ -443,7 +447,7 @@ wss.on('connection', ws => {
       case 'list': send(ws, { t: 'list', rooms: listRooms() }); break;
       case 'create': { const nr = makeRoom({ public: m.public, name: m.name }); join(p, nr); break; }
       case 'quick': {
-        const nr = makeRoom({ solo: true, role: ['hide', 'seek', 'random'].includes(m.role) ? m.role : 'random', settings: { cpus: clampI(m.cpus, 1, 7), diff: clampI(m.diff, 0, 2), hide: clampI(m.hide ?? 30, 10, 60), seek: clampI(m.seek ?? 180, 60, 600) } });
+        const nr = makeRoom({ solo: true, role: ['hide', 'seek', 'random'].includes(m.role) ? m.role : 'random', settings: { cpus: clampI(m.cpus, 1, 7), diff: clampI(m.diff, 0, 2), hide: clampI(m.hide ?? 30, 10, 60), seek: clampI(m.seek ?? 180, 60, 600), map: GAME_MAPS.includes(+m.map) ? +m.map : -1 } });
         join(p, nr); startRound(nr); break;
       }
       case 'join': {
@@ -461,6 +465,7 @@ wss.on('connection', ws => {
           if (s.hide !== undefined) r.settings.hide = clampI(s.hide, 10, 60);
           if (s.seek !== undefined) r.settings.seek = clampI(s.seek, 60, 600);
           if (s.seekers !== undefined) r.settings.seekers = clampI(s.seekers, 0, 3);
+          if (s.map !== undefined) r.settings.map = GAME_MAPS.includes(+s.map) ? +s.map : -1;
           if (s.role !== undefined && ['hide', 'seek', 'random'].includes(s.role)) r.role = s.role;
           if (s.public !== undefined) r.public = !!s.public;
           if (r.state === 'lobby') syncBots(r);
@@ -472,7 +477,7 @@ wss.on('connection', ws => {
       case 'st':
         if (r && !(r.state === 'hide' && p.seeker)) {
           const map = mapOf(r);
-          if (m.w !== (r.state === 'lobby' ? LOBBY : ROOM)) break;     // still on the old map
+          if (m.w !== mapIdOf(r)) break;     // still on the old map
           const x = +m.x, y = +m.y, z = +m.z;
           if ([x, y, z].every(Number.isFinite)) {
             const d = Math.hypot(x - p.x, z - p.z);

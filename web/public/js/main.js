@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { World } from './world.js';
 import { Googly, SKINS } from './googly.js';
 import { Pet, PETS } from './pets.js';
-import { MAPS, ROOM, LOBBY } from './maps.js';
+import { MAPS, ROOM, LOBBY, GAME_MAPS } from './maps.js';
 import * as S from './sim.js';
 import { sfx, music, unlockAudio, setMusic, setSfx, audioState, setListener } from './sfx.js';
 
@@ -80,7 +80,30 @@ function seg(el, value, onPick) {
 }
 seg($('solo-role'), prof.role, v => { prof.role = v; store.set('role', v); });
 for (const id of ['solo-n', 'solo-d', 'solo-h', 'solo-s']) { const v = store.get(id, null); if (v !== null) $(id).value = v; $(id).onchange = () => store.set(id, $(id).value); }
-$('solo-go').onclick = () => { sfx.click(); send({ t: 'quick', cpus: +$('solo-n').value, diff: +$('solo-d').value, hide: +$('solo-h').value, seek: +$('solo-s').value, role: prof.role }); };
+$('solo-go').onclick = () => { sfx.click(); send({ t: 'quick', cpus: +$('solo-n').value, diff: +$('solo-d').value, hide: +$('solo-h').value, seek: +$('solo-s').value, role: prof.role, map: soloMap }); };
+// map picker cards: a little top-down drawing of each place, plus "surprise me"
+const GROUND = { wood: '#c8925a', kitchen: '#e8e0d0', grass: '#5aa84a' };
+function mapThumb(m, cv) {
+  const g = cv.getContext('2d'), W = cv.width = 200, H = cv.height = 110;
+  if (!m) { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#7a3ae0'); gr.addColorStop(1, '#d9964a'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = '900 64px "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', W / 2, H / 2 + 4); return; }
+  const k = Math.min(W / m.W, H / m.D);
+  g.fillStyle = '#1a1030'; g.fillRect(0, 0, W, H);
+  g.fillStyle = GROUND[m.ground] || '#888'; g.fillRect(W / 2 - m.W * k / 2, H / 2 - m.D * k / 2, m.W * k, m.D * k);
+  for (const c of m.colliders) {
+    if (c.m === 'wall') continue;
+    g.fillStyle = c.soft ? (m.outdoor ? '#2f7a2a' : '#f0a6c0') : c.y > 2 ? 'rgba(90,50,30,.35)' : ['#8a5a2b', '#2a9df4', '#e84a5f', '#ffc93c', '#9b59ff'][Math.abs(Math.round(c.x * 3 + c.z)) % 5];
+    const x = W / 2 + c.x * k, y = H / 2 + c.z * k;
+    if (c.t === 'c') { g.beginPath(); g.arc(x, y, Math.max(1.2, c.r * k), 0, 7); g.fill(); } else g.fillRect(x - c.w * k / 2, y - c.d * k / 2, Math.max(1, c.w * k), Math.max(1, c.d * k));
+  }
+}
+function mapCards(el, sel, onPick) {
+  const opts = [-1, ...GAME_MAPS];
+  el.innerHTML = opts.map(i => `<div class="mapc ${i === sel ? 'on' : ''}" data-i="${i}"><canvas></canvas><b>${i < 0 ? 'Surprise me' : esc(MAPS[i].name.replace('The Giant ', 'Giant '))}</b><small>${i < 0 ? 'A random place every round' : esc(MAPS[i].blurb)}</small></div>`).join('');
+  el.querySelectorAll('.mapc').forEach(d => { const i = +d.dataset.i; mapThumb(i < 0 ? null : MAPS[i], d.querySelector('canvas')); d.onclick = () => onPick(i); });
+}
+let soloMap = store.get('soloMap', -1);
+const drawSoloMaps = () => mapCards($('solo-maps'), soloMap, i => { soloMap = i; store.set('soloMap', i); sfx.click(); drawSoloMaps(); });
+drawSoloMaps();
 
 // ------------------------------------------------------------------ online browser
 $('on-pub').onclick = () => { sfx.click(); send({ t: 'create', public: true }); };
@@ -89,7 +112,7 @@ $('on-join').onclick = () => { const c = $('on-code').value.trim().toUpperCase()
 $('on-code').onkeydown = e => { if (e.key === 'Enter') $('on-join').click(); };
 $('on-ref').onclick = () => { sfx.click(); send({ t: 'list' }); };
 function drawRooms(list) {
-  $('rooms').innerHTML = list.length ? list.map(r => `<div class="roomrow"><div><b>${esc(r.name)}</b><small>${r.total}/8 googlies (${r.humans} human) · CPUs ${esc(r.diff)} · ${r.state === 'lobby' ? 'waiting in the hall' : 'round on — jump in as a seeker'}</small></div><button class="green" data-c="${r.code}">JOIN</button></div>`).join('')
+  $('rooms').innerHTML = list.length ? list.map(r => `<div class="roomrow"><div><b>${esc(r.name)}</b><small>${esc(r.map)} · ${r.total}/8 googlies (${r.humans} human) · CPUs ${esc(r.diff)} · ${r.state === 'lobby' ? 'waiting in the hall' : 'round on — jump in as a seeker'}</small></div><button class="green" data-c="${r.code}">JOIN</button></div>`).join('')
     : `<div class="empty">No open lobbies right now. Make one and send your friends the code!</div>`;
   $('rooms').querySelectorAll('button').forEach(b => b.onclick = () => { sfx.click(); send({ t: 'join', code: b.dataset.c }); });
 }
@@ -148,7 +171,8 @@ function drawLobby() {
   $('lb-role').value = prof.role;
   $('lb-hostctl').classList.toggle('hidden', !h);
   $('lb-summary').classList.toggle('hidden', h);
-  $('lb-summary').innerHTML = `CPUs: <b>${s.cpus}</b> (${['Easy', 'Normal', 'Hard'][s.diff]})<br>Hide: <b>${s.hide} s</b> · Seek: <b>${Math.round(s.seek / 60)} min</b> · Seekers: <b>${s.seekers || 'auto'}</b><br>${room.public ? 'Public lobby' : 'Private lobby'} · only the host can change these`;
+  if (h && drawLobby.map !== room.code + s.map) { drawLobby.map = room.code + s.map; mapCards($('lb-maps'), s.map, i => { sfx.click(); send({ t: 'set', settings: { map: i } }); }); }
+  $('lb-summary').innerHTML = `Place: <b>${s.map < 0 ? 'Surprise me (random)' : esc(MAPS[s.map].name)}</b><br>CPUs: <b>${s.cpus}</b> (${['Easy', 'Normal', 'Hard'][s.diff]})<br>Hide: <b>${s.hide} s</b> · Seek: <b>${Math.round(s.seek / 60)} min</b> · Seekers: <b>${s.seekers || 'auto'}</b><br>${room.public ? 'Public lobby' : 'Private lobby'} · only the host can change these`;
   $('lb-start').classList.toggle('hidden', !h);
   $('lb-start').textContent = room.state === 'lobby' ? 'START ROUND' : 'ROUND RUNNING…';
   $('lb-start').disabled = room.state !== 'lobby';
@@ -199,7 +223,7 @@ function autoStart() {
   if (!prof.name) prof.name = 'TESTER';
   sendMe();
   if (Q.has('lobby')) send({ t: 'create', public: false });
-  else send({ t: 'quick', cpus: +(Q.get('cpus') || 5), diff: +(Q.get('diff') || 1), hide: +(Q.get('hide') || 30), seek: +(Q.get('seek') || 180), role: Q.get('role') || 'random' });
+  else send({ t: 'quick', cpus: +(Q.get('cpus') || 5), diff: +(Q.get('diff') || 1), hide: +(Q.get('hide') || 30), seek: +(Q.get('seek') || 180), role: Q.get('role') || 'random', map: Q.has('map') ? +Q.get('map') : -1 });
 }
 setInterval(() => { pingT = performance.now(); send({ t: 'ping', c: pingT, rtt }); }, 2000);
 
@@ -239,8 +263,8 @@ function enterWorld(m) {
     shopOpen = false; show(null);
     music.play(m.state === 'seek' ? 'seek' : 'hide');
     if (m.state === 'hide') {
-      if (me.seeker) { center('YOU ARE THE SEEKER', 2600, '#ff9ac0', 'Count to ' + Math.round(m.time) + '… no peeking!'); }
-      else { center('HIDE!', 2600, '#ffd3a0', 'Find a good spot before the seeker opens their eyes'); sfx.hide(); }
+      if (me.seeker) { center('YOU ARE THE SEEKER', 2600, '#ff9ac0', `${G.map.name} · count to ${Math.round(m.time)}… no peeking!`); }
+      else { center('HIDE!', 2600, '#ffd3a0', `${G.map.name} — find a good spot before the seeker opens their eyes`); sfx.hide(); }
     } else if (m.state === 'seek') center('YOU JOINED AS A SEEKER', 2600, '#ff9ac0', 'Help find the hiders!');
     if (!mobile && !Q.has('bot') && !Q.has('cam') && !Q.has('fakeend')) askLock();
     if (Q.has('fakeend')) setTimeout(() => { const ps = [...G.ents.values()]; showEnd({ winner: 'hiders', seekT: 180, standings: ps.map((e, i) => ({ id: e.id, name: e.name, color: e.color, bot: e.bot, orig: i === 0, found: i % 2 === 1, tags: i === 0 ? 3 : 0, hid: i === 0 ? -1 : i % 2 ? 40 + i * 9 : 180 })) }); showCoins({ total: 130, items: [['Played a round', 10], ['Never found — hiders win!', 100], ['Taunted 4×', 20]] }); }, 800);
@@ -268,7 +292,7 @@ function addEnt(p) {
   world.actors.add(fig.group);
   const e = { id: p.id, name: p.name, color: p.color, bot: p.bot, seeker: !!p.seeker, fig, buf: [], x: p.x, y: p.y, z: p.z, yaw: p.yaw, flags: 2 | (p.seeker ? 4 : 0), vx: 0, vz: 0, pet: null, petKind: null };
   setPet(e, local ? prof.pet : p.pet);
-  if (local) fig.onStep = v => sfx.step(null, v * 0.5, G?.mapId === ROOM && me.crouch);
+  if (local) fig.onStep = v => sfx.step(null, v * 0.5, (G && G.mapId !== LOBBY) && me.crouch);
   else fig.onStep = v => { if (Math.hypot(e.x - me.x, e.z - me.z) < 22) sfx.step([e.x, e.y, e.z], v * 0.8, !!(e.flags & 1)); };
   G.ents.set(p.id, e);
   return e;
@@ -365,10 +389,10 @@ addEventListener('mouseup', () => { drag = null; });
 canvas.addEventListener('wheel', e => { if (!G) return; prof.zoom = Math.max(1.8, Math.min(8, prof.zoom * (1 + Math.sign(e.deltaY) * 0.1))); store.set('zoom', prof.zoom); }, { passive: true });
 addEventListener('contextmenu', e => { if (G) e.preventDefault(); });
 window.__look = (dx, dy) => { if (macLocked) { look.dx += dx; look.dy += dy; } };
-window.__unlocked = () => { if (macLocked) { macLocked = false; if (G && G.mapId === ROOM) pause(); } };
+window.__unlocked = () => { if (macLocked) { macLocked = false; if (G && G.mapId !== LOBBY) pause(); } };
 window.__mouse = (b, down) => { if (!macLocked) return; if (b === 0 && down) doTag(); };
 function askLock() {
-  if (!G || G.mapId !== ROOM) return;
+  if (!G || G.mapId === LOBBY) return;
   if (isMac) { window.webkit.messageHandlers.gp.postMessage('lock'); macLocked = true; $('clickto').classList.add('hidden'); if (screen === 'scr-pause') show(null); return; }
   $('clickto').classList.remove('hidden');
 }
@@ -376,7 +400,7 @@ $('clickto').onclick = () => { unlockAudio(); if (isMac) return askLock(); canva
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   if (locked) { $('clickto').classList.add('hidden'); if (screen === 'scr-pause') show(null); }
-  else if (G && G.mapId === ROOM && !chatting && screen !== 'scr-end') pause();
+  else if (G && G.mapId !== LOBBY && !chatting && screen !== 'scr-end') pause();
 });
 function unlock() { if (document.pointerLockElement) document.exitPointerLock(); if (macLocked) { macLocked = false; window.webkit?.messageHandlers?.gp?.postMessage('unlock'); } }
 function pause() { if (!G) return; keys.clear(); show('scr-pause'); $('clickto').classList.add('hidden'); }
@@ -388,12 +412,12 @@ function openChat() { chatting = true; keys.clear(); $('chatform').classList.rem
 function closeChat() { chatting = false; $('chatform').classList.add('hidden'); $('chatin').blur(); $('chatin').value = ''; }
 $('chatform').onsubmit = e => { e.preventDefault(); const t = $('chatin').value.trim(); if (t) send({ t: 'chat', text: t }); closeChat(); };
 function doTag() {
-  if (!G || G.mapId !== ROOM || !me.seeker || G.state !== 'seek') return;
+  if (!G || G.mapId === LOBBY || !me.seeker || G.state !== 'seek') return;
   const t = performance.now(); if (t - (doTag.last || 0) < 450) return; doTag.last = t;
   send({ t: 'tag' }); ent(myId)?.fig.reach(); sfx.reach(null);
 }
 function doTaunt() {
-  if (!G || G.mapId !== ROOM || me.seeker || G.state !== 'seek') return;
+  if (!G || G.mapId === LOBBY || me.seeker || G.state !== 'seek') return;
   const t = performance.now(); if (t - (doTaunt.last || 0) < 3600) return; doTaunt.last = t;
   send({ t: 'taunt' });
 }
@@ -440,11 +464,11 @@ function updateLocal(dt) {
   const sens = 0.0024 * prof.sens;
   me.camYaw -= look.dx * sens; me.camPitch -= look.dy * sens * (prof.invy ? -1 : 1); look.dx = look.dy = 0;
   me.camPitch = Math.max(-1.25, Math.min(0.9, me.camPitch));
-  const frozen = G.mapId === ROOM && G.state === 'hide' && me.seeker;
+  const frozen = G.mapId !== LOBBY && G.state === 'hide' && me.seeker;
   const s = Math.sin(me.camYaw), c = Math.cos(me.camYaw);
   let dx = inp.mx * c - inp.mz * s, dz = -inp.mx * s - inp.mz * c;
   if (frozen) dx = dz = 0;
-  const crouch = !frozen && (me.duck || inp.crouch) && G.mapId === ROOM;
+  const crouch = !frozen && (me.duck || inp.crouch) && G.mapId !== LOBBY;
   const n = Math.ceil(dt / (1 / 90));
   for (let i = 0; i < n; i++) S.stepPlayer(me, { dx, dz, jump: inp.jump && i === 0 && !frozen, sprint: inp.sprint, crouch }, dt / n, G.map);
   if (!crouch && me.crouch) me.duck = true;           // stuck under something: stay ducked
@@ -461,7 +485,7 @@ function updateLocal(dt) {
 // ------------------------------------------------------------------ everyone's googly + pet
 function updateEnts(dt) {
   const rt = performance.now() / 1000 - 0.1;
-  const inRoom = G.mapId === ROOM, st = G.state;
+  const inRoom = G.mapId !== LOBBY, st = G.state;
   for (const e of G.ents.values()) {
     let speed, crouch, onGround;
     if (e.id === myId) {
@@ -589,7 +613,7 @@ function updateHUD(dt) {
   // scoreboard
   const showBoard = keys.has('Tab');
   $('board').classList.toggle('hidden', !showBoard);
-  if (showBoard) $('board').innerHTML = `<table><tr><th>GOOGLY</th><th>ROLE</th><th class="r">PING</th></tr>${all.sort((a, b) => a.seeker - b.seeker).map(e => `<tr class="${e.id === myId ? 'me' : ''}"><td><span class="dot" style="background:${esc(e.color)}"></span> ${esc(e.name)}${e.bot ? ' <small>(CPU)</small>' : ''}</td><td>${e.seeker ? '🔎 seeker' : '🙈 hiding'}</td><td class="r">${e.id === myId ? Math.round(rtt * 1000) + 'ms' : e.bot ? '—' : ''}</td></tr>`).join('')}</table><p class="tiny">The Giant Bedroom · lobby ${esc(room?.code || '')}</p>`;
+  if (showBoard) $('board').innerHTML = `<table><tr><th>GOOGLY</th><th>ROLE</th><th class="r">PING</th></tr>${all.sort((a, b) => a.seeker - b.seeker).map(e => `<tr class="${e.id === myId ? 'me' : ''}"><td><span class="dot" style="background:${esc(e.color)}"></span> ${esc(e.name)}${e.bot ? ' <small>(CPU)</small>' : ''}</td><td>${e.seeker ? '🔎 seeker' : '🙈 hiding'}</td><td class="r">${e.id === myId ? Math.round(rtt * 1000) + 'ms' : e.bot ? '—' : ''}</td></tr>`).join('')}</table><p class="tiny">${esc(G.map.name)} · lobby ${esc(room?.code || '')}</p>`;
 }
 
 // ------------------------------------------------------------------ end of round

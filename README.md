@@ -1,6 +1,6 @@
 # Googly Seek
 
-Hide and seek for googlies. Up to 8 players (friends and/or computer googlies) in one giant bedroom: crawl under the bed, hide behind the curtains, in the wardrobe, the tent, the box fort, the dollhouse or the laundry pile, or climb the book stairs onto the bed and the bookshelf. Seekers count with their hands over their eyes, then tag hiders, who join the seekers. Every 30 seconds the hiders squeak.
+Hide and seek for googlies. Up to 8 players (friends and/or computer googlies) in three giant places: the Bedroom (under the bed, the wardrobe, the tent, the laundry pile, up on the bookshelf), the Kitchen (under the tablecloth, the pantry, the open cupboard, the grocery bag, up on the counter) and the Backyard (the treehouse, the shed, the doghouse, bushes and tall grass, the slide). The host picks one, or "Surprise me" picks a random place each round. Seekers count with their hands over their eyes, then tag hiders, who join the seekers. Every 30 seconds the hiders squeak.
 
 - **Lobbies**: public or private, 4-letter codes and invite links. While you wait you walk around the Waiting Hall (trampolines, a shop counter, a fountain).
 - **Solo**: PLAY SOLO starts a round against computer googlies right away (Easy / Normal / Hard, choose to hide, seek or either).

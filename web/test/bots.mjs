@@ -6,7 +6,7 @@ const diff = +(process.argv[2] ?? 1), cpus = +(process.argv[3] || 7), seek = +(p
 const ws = new WebSocket(url);
 let me, names = {}, t0 = Date.now(), pos = null, world = -1, caught = [], taunts = 0, squeaks = 0, reach = 0;
 const sec = () => ((Date.now() - t0) / 1000).toFixed(1);
-ws.on('open', () => { ws.send(JSON.stringify({ t: 'me', name: 'TESTER', color: '#8a5a2b' })); ws.send(JSON.stringify({ t: 'quick', cpus, diff, hide: 10, seek, role: process.env.ROLE || 'hide' })); });
+ws.on('open', () => { ws.send(JSON.stringify({ t: 'me', name: 'TESTER', color: '#8a5a2b' })); ws.send(JSON.stringify({ t: 'quick', cpus, diff, hide: 10, seek, role: process.env.ROLE || 'hide', map: +(process.env.MAP ?? -1) })); });
 ws.on('message', raw => {
   const m = JSON.parse(raw);
   if (m.t === 'hello') me = m.id;

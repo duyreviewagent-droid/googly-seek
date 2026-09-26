@@ -153,3 +153,13 @@ body.mobile #chatbox { display: none; } body.mobile #role { bottom: 260px; }
 }
 #hud.lobby #timer, #hud.lobby #left, #hud.lobby #role, #hud.lobby #t-act, #hud.lobby #t-cr, #hud.lobby #blind, #hud.lobby #vign, #hud.lobby #chatbox, #hud.lobby #board, #hud.lobby #keys { display: none !important; }
 #hud.lobby #prompt { left: calc(50% - 200px); }
+/* map picker */
+.maps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; }
+.mapc { background: #ffffff0d; border: 2px solid #ffffff22; border-radius: 12px; padding: 6px; cursor: pointer; text-align: left; font-size: 12px; }
+.mapc:hover { background: #ffffff18; }
+.mapc.on { border-color: #b98cff; background: #9b59ff2a; }
+.mapc b { display: block; font-size: 13px; } .mapc small { opacity: .7; font-size: 10.5px; line-height: 1.2; display: block; }
+.mapc canvas { width: 100%; height: 56px; border-radius: 8px; display: block; margin-bottom: 5px; background: #000; }
+.maps.small .mapc canvas { height: 38px; } .maps.small .mapc small { display: none; } .maps.small .mapc b { font-size: 11px; }
+.maps.locked { pointer-events: none; }
+@media (max-width: 720px) { .maps { grid-template-columns: repeat(2, 1fr); } }

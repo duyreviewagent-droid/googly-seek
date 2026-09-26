@@ -18,7 +18,7 @@
 <section id="scr-title" class="screen">
   <div class="card">
     <h1><span class="g">GOOGLY</span> <span class="s">SEEK</span></h1>
-    <p class="sub">Hide and seek for googlies · up to 8 players · one giant room</p>
+    <p class="sub">Hide and seek for googlies · up to 8 players · 3 giant places</p>
     <div id="invite" class="banner hidden"></div>
     <input id="nm" maxlength="14" placeholder="Your name" autocomplete="off">
     <div id="swatches"></div>
@@ -33,6 +33,8 @@
 <section id="scr-solo" class="screen hidden">
   <div class="card">
     <h2>PLAY SOLO</h2>
+    <div class="label">WHERE?</div>
+    <div class="maps" id="solo-maps"></div>
     <div class="label">I WANT TO…</div>
     <div class="seg" id="solo-role"><button data-v="hide">🙈 HIDE</button><button data-v="random">🎲 EITHER</button><button data-v="seek">🔎 SEEK</button></div>
     <div class="grid2">
@@ -79,6 +81,8 @@
     <div id="lb-players"></div>
     <div id="lb-summary" class="summary hidden"></div>
     <div id="lb-hostctl">
+      <div class="label">WHERE?</div>
+      <div class="maps small" id="lb-maps"></div>
       <div class="grid2">
         <label>CPUs <select id="lb-cpus"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></label>
         <label>Difficulty <select id="lb-diff"><option value="0">Easy</option><option value="1">Normal</option><option value="2">Hard</option></select></label>
@@ -149,7 +153,8 @@
 <section id="scr-help" class="screen hidden">
   <div class="card wide help">
     <h2>HOW TO PLAY</h2>
-    <p><b>Hiders</b> get 30 seconds to hide anywhere in the Giant Bedroom while the <b>seeker</b> counts at the door with their hands over their eyes. Crawl under the bed (press <b>C</b> to duck), stand behind the curtains, sneak into the wardrobe, the tent, the box fort, the dollhouse or the laundry pile — or climb the book stairs onto the bed and the bookshelf.</p>
+    <p><b>Three giant places:</b> the Bedroom, the Kitchen and the Backyard. The host picks one, or lets the game choose.</p>
+    <p><b>Hiders</b> get 30 seconds to hide while the <b>seeker</b> counts at the door with their hands over their eyes. Crawl under the bed or the tablecloth (press <b>C</b> to duck), stand behind the curtains, sneak into the wardrobe, the pantry, the shed or the doghouse, step into a bush or the tall grass — or climb up onto the bed, the kitchen counter or the treehouse.</p>
     <p><b>Seekers</b> hunt everyone down. Get close and <b>click</b> to tag. Every hider you find turns into a seeker and helps you look. Every 30 seconds, all the hiders <b>squeak</b> — listen for it!</p>
     <p><b>Hiders win</b> if anyone is still hidden when the clock runs out. <b>Seekers win</b> if they find everyone. Brave hiders can press <b>F</b> to taunt (+5 coins, but they'll hear you…).</p>
     <p><b>Coins</b> buy skins and pets in the shop. Pets follow you everywhere — even into your hiding spot, so choose wisely.</p>

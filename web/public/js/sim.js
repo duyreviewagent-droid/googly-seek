@@ -160,7 +160,7 @@ export const seesBody = (map, eye, q) => canSee(map, eye, headOf(q)) || canSee(m
 const L = 3;
 export function buildNav(map, cell = 0.5) {
   const nx = Math.floor(map.W / cell), nz = Math.floor(map.D / cell), N = nx * nz * L;
-  const floor = new Float32Array(N), open = new Uint8Array(N), low = new Uint8Array(N);
+  const floor = new Float32Array(N), open = new Uint8Array(N), low = new Uint8Array(N), edge = new Uint8Array(N);
   const cx = i => -map.W / 2 + (i + 0.5) * cell, cz = j => -map.D / 2 + (j + 0.5) * cell;
   const pad = PR + 0.05, rr = pad / Math.SQRT1_2;   // cells within `pad` of a block count as standing on it
   const solid = map.colliders.filter(c => !c.soft);
@@ -168,11 +168,13 @@ export function buildNav(map, cell = 0.5) {
     const x = cx(i), z = cz(j);
     const near = solid.filter(c => c.t === 'b' ? Math.abs(x - c.x) < c.w / 2 + pad && Math.abs(z - c.z) < c.d / 2 + pad : Math.hypot(x - c.x, z - c.z) < c.r + pad);
     // every surface you could stand on here: the floor and the tops of things under the foot circle
-    const tops = [0];
+    const tops = [0], inside = new Set([0]);
     for (const c of near) {
       const top = c.y + c.h;
       const on = c.t === 'b' ? (Math.max(Math.abs(x - c.x) - c.w / 2, 0) ** 2 + Math.max(Math.abs(z - c.z) - c.d / 2, 0) ** 2 < rr * rr * 0.5) : Math.hypot(x - c.x, z - c.z) < c.r + rr * 0.5;
       if (on && !tops.includes(top)) tops.push(top);
+      // is the cell centre really over it (not just hanging off the edge)?
+      if (on && (c.t === 'b' ? Math.abs(x - c.x) < c.w / 2 - 0.2 && Math.abs(z - c.z) < c.d / 2 - 0.2 : Math.hypot(x - c.x, z - c.z) < c.r - 0.2)) inside.add(top);
     }
     tops.sort((a, b) => a - b);
     let n = 0;
@@ -187,10 +189,10 @@ export function buildNav(map, cell = 0.5) {
       }
       if (!ok || Math.abs(x) > map.W / 2 - 0.6 || Math.abs(z) > map.D / 2 - 0.6 || (map.roof && g + PHC >= map.roof)) continue;
       const k = (j * nx + i) * L + n++;
-      floor[k] = g; low[k] = lo ? 1 : 0; open[k] = 1;
+      floor[k] = g; low[k] = lo ? 1 : 0; open[k] = 1; edge[k] = inside.has(g) ? 0 : 1;
     }
   }
-  return { nx, nz, cell, floor, open, low, cx, cz, W: map.W, D: map.D };
+  return { nx, nz, cell, floor, open, low, edge, cx, cz, W: map.W, D: map.D };
 }
 const colOf = (nav, x, z) => clamp(Math.floor((x + nav.W / 2) / nav.cell), 0, nav.nx - 1) + clamp(Math.floor((z + nav.D / 2) / nav.cell), 0, nav.nz - 1) * nav.nx;
 /** The nav node for a googly at (x, y, z): the floor in that cell closest to (just under) its feet. -1 if none. */
@@ -232,7 +234,7 @@ export function findPath(nav, x0, y0, z0, x1, y1, z1) {
       const n = link(k, b * nav.nx + a); if (n < 0 || closed[n]) continue;
       if (di && dj && (link(k, j * nav.nx + a) < 0 || link(k, b * nav.nx + i) < 0)) continue;
       const rise = nav.floor[n] - nav.floor[k];
-      const ng = g[k] + (di && dj ? 1.414 : 1) + (rise > STEP ? 3 : rise < -STEP ? 1 : 0) + (nav.low[n] ? 0.6 : 0);
+      const ng = g[k] + (di && dj ? 1.414 : 1) + (rise > STEP ? 3 : rise < -STEP ? 1 : 0) + (nav.low[n] ? 0.6 : 0) + (nav.edge[n] ? 2.5 : 0);
       if (ng < g[n]) { g[n] = ng; from[n] = k; push(n, ng + hfn(n)); }
     }
   }
